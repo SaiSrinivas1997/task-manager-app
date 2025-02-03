@@ -1,26 +1,24 @@
+// Use environment variables for database URIs
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const connectMongoDB = require('./config/dbConfig'); // MongoDB
-const { connectPostgresDB } = require('./config/dbConfig'); // PostgreSQL
-
-dotenv.config(); // Load environment variables
-
 const app = express();
-app.use(cors()); // Enable CORS for cross-origin requests
-app.use(express.json()); // Enable JSON body parsing
 
-// Connect to MongoDB and PostgreSQL
-connectMongoDB();
-connectPostgresDB();
+// Import database connection functions
+const connectMongoDB = require('./config/connectMongoDB');
+const { connectPostgresDB } = require('./config/connectPostgresDB');
 
-// Simple test route
-app.get('/', (req, res) => {
-  res.send('Task Management App API');
-});
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-// Set server to listen on specified port
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Database connections
+connectMongoDB();      // Connect to MongoDB
+connectPostgresDB();   // Connect to PostgreSQL
+
+// Import routes here (e.g., task routes)
+app.use('/api/tasks', require('./routes/taskRoutes'));
+
+// Export the app
+module.exports = app;
