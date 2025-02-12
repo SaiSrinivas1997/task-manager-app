@@ -1,27 +1,43 @@
-const mongoose = require('mongoose');
-const { Schema } = mongoose;
+// models/Task.js
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/connectPostgresDB'); 
 
-const taskSchema = new Schema({
+const Task = sequelize.define('Task', {
+  id: {
+    type: DataTypes.UUID, // Use UUID for unique task identification
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
+  },
   title: {
-    type: String,
-    required: true,
+    type: DataTypes.STRING,
+    allowNull: false,
   },
   description: {
-    type: String,
-  },
-  status: {
-    type: String,
-    default: 'pending',
-  },
-  dueDate: {
-    type: Date,
+    type: DataTypes.TEXT, // Using TEXT instead of STRING for longer descriptions
+    allowNull: false,
   },
   assignedTo: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: 'Users', // Ensure 'Users' table exists
+      key: 'id',
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL',
   },
-}, { timestamps: true });
-
-const Task = mongoose.model('Task', taskSchema);
+  status: {
+    type: DataTypes.ENUM('pending', 'in-progress', 'completed'),
+    defaultValue: 'pending',
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+  },
+});
 
 module.exports = Task;

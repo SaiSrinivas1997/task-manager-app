@@ -1,56 +1,123 @@
 const express = require('express');
-const Task = require('../models/taskModel');
+const Task = require('../models/Task');
+const Assignment = require('../models/Assignment');
+const User = require('../models/User'); // Import User model for relations
 const router = express.Router();
 
-// Create a new task
-router.post('/', async (req, res) => {
-  const { title, description, status, dueDate, assignedTo } = req.body;
-
+// ✅ Create Task
+router.post('/create', async (req, res) => {
   try {
-    const newTask = new Task({ title, description, status, dueDate, assignedTo });
-    await newTask.save();
+    const { title, description, assignees, status, priority, deadline } = req.body;
+    
+    const newTask = await Task.create({
+      title,
+      description,
+      status: status || 'pending',
+      priority: priority || 'medium',
+      deadline,
+    });
+
+    // If assignees exist, create assignments
+    if (assignees && assignees.length > 0) {
+      const assignments = assignees.map(userId => ({
+        userId,
+        taskId: newTask.id,
+        assignedDate: new Date(),
+      }));
+      await Assignment.bulkCreate(assignments);
+    }
+
     res.status(201).json(newTask);
   } catch (err) {
-    res.status(400).json({ message: 'Error creating task', error: err });
+    res.status(500).json({ message: 'Error creating task', error: err });
   }
 });
 
-// Get all tasks
+// ✅ Get all tasks with assignees
 router.get('/', async (req, res) => {
   try {
-    const tasks = await Task.find();
-    res.json(tasks);
+    const tasks = await Task.findAll({
+      include: [
+        {
+          model: User,
+          as: 'assignees',
+          attributes: ['id', 'username', 'email'],
+          through: { attributes: [] }, // Exclude Assignment table data
+        }
+      ],
+    });
+    res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching tasks', error: err });
   }
 });
 
-// Update a task
-router.put('/:id', async (req, res) => {
-  const { id } = req.params;
-  const { title, description, status, dueDate, assignedTo } = req.body;
-
+// ✅ Get task by ID with assignees
+router.get('/:id', async (req, res) => {
   try {
-    const updatedTask = await Task.findByIdAndUpdate(id, {
-      title,
-      description,
-      status,
-      dueDate,
-      assignedTo,
-    }, { new: true });
-    res.json(updatedTask);
+    const task = await Task.findOne({
+      where: { id: req.params.id },
+      include: [
+        {
+          model: User,
+          as: 'assignees',
+          attributes: ['id', 'username', 'email'],
+          through: { attributes: [] },
+        }
+      ],
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+    res.status(200).json(task);
   } catch (err) {
-    res.status(400).json({ message: 'Error updating task', error: err });
+    res.status(500).json({ message: 'Error fetching task', error: err });
   }
 });
 
-// Delete a task
-router.delete('/:id', async (req, res) => {
-  const { id } = req.params;
-
+// ✅ Update task (including assignees)
+router.put('/:id', async (req, res) => {
   try {
-    await Task.findByIdAndDelete(id);
-    res.status(200).json({ message: 'Task deleted' });
+    const { title, description, assignees, status, priority, deadline } = req.body;
+
+    const task = await Task.findByPk(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Update task details
+    await task.update({ title, description, status, priority, deadline });
+
+    // Update assignees (replacing old ones)
+    if (assignees && assignees.length > 0) {
+      await Assignment.destroy({ where: { taskId: task.id } }); // Remove old assignments
+      const assignments = assignees.map(userId => ({
+        userId,
+        taskId: task.id,
+        assignedDate: new Date(),
+      }));
+      await Assignment.bulkCreate(assignments);
+    }
+
+    res.status(200).json(task);
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating task', error: err });
+  }
+});
+
+// ✅ Delete task (also removes assignments)
+router.delete('/:id', async (req, res) => {
+  try {
+    const task = await Task.findByPk(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    await Assignment.destroy({ where: { taskId: task.id } }); // Remove related assignments
+    await task.destroy(); // Delete task
+
+    res.status(200).json({ message: 'Task deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Error deleting task', error: err });
   }
