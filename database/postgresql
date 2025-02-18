@@ -1,20 +1,50 @@
+-- Create users table
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role VARCHAR(50) DEFAULT 'user', -- Can be 'admin' or 'user'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create tasks table
 CREATE TABLE tasks (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(50) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    priority VARCHAR(50) DEFAULT 'medium', -- New field
+    deadline TIMESTAMP, -- New field
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create assignments table
 CREATE TABLE assignments (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
     task_id INT REFERENCES tasks(id) ON DELETE CASCADE,
-    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    priority VARCHAR(50) DEFAULT 'medium', -- New field
+    status VARCHAR(50) DEFAULT 'assigned', -- New field
+    assigned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ✅ Create a trigger function to update `updated_at` column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ Attach trigger to update `updated_at` on update
+CREATE TRIGGER trigger_update_users
+BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_update_tasks
+BEFORE UPDATE ON tasks
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

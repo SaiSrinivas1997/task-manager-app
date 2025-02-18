@@ -1,5 +1,6 @@
 const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = require('../config/connectPostgresDB'); // Ensure this is the correct Sequelize connection
+const sequelize = require('../config/connectPostgresDB').sequelize; // Ensure this is the correct Sequelize connection
+const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
   id: {
@@ -42,6 +43,11 @@ const User = sequelize.define('User', {
   }
 }, {
   timestamps: true,  // Automatically adds createdAt and updatedAt
+});
+
+User.beforeCreate(async (user) => {
+  const salt = await bcrypt.genSalt(10);
+  user.passwordHash = await bcrypt.hash(user.passwordHash, salt);
 });
 
 module.exports = User;

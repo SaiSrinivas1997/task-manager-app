@@ -1,7 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = require('../config/connectPostgresDB');
-const User = require('./User');  // Ensure correct model import
-const Task = require('./Task');
+const sequelize = require('../config/connectPostgresDB').sequelize;
+const User = require('./userModel');  // Ensure correct model import
+const Task = require('./taskModel');
 
 const Assignment = sequelize.define('Assignment', {
   id: {

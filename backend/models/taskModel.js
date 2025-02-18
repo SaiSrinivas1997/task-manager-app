@@ -1,6 +1,6 @@
 // models/Task.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/connectPostgresDB'); 
+const sequelize = require('../config/connectPostgresDB').sequelize; 
 
 const Task = sequelize.define('Task', {
   id: {
